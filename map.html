@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LogiQ – Live Quantum Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    .eta {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      z-index: 1000;
+      width: 320px;
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+    }
+
+    .eta-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-top: 1px solid rgba(0,0,0,0.08);
+    }
+
+    .eta-row:first-of-type {
+      border-top: none;
+    }
+
+    .eta-value {
+      font-weight: 700;
+    }
+
+    .quantum-color {
+      color: #7c3aed;
+    }
+
+    .toll-color {
+      color: #fbbf24;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<div class="eta">
+  <h3>⏱ ETA Box</h3>
+  <div class="eta-row">
+    <span>⚛ Distance</span>
+    <span id="eta-distance" class="eta-value quantum-color">—</span>
+  </div>
+  <div class="eta-row">
+    <span>⏳ Time</span>
+    <span id="eta-time" class="eta-value quantum-color">—</span>
+  </div>
+  <div class="eta-row">
+    <span>🛣 Tolls</span>
+    <span id="eta-tolls" class="eta-value toll-color">—</span>
+  </div>
+  <div class="eta-row">
+    <span>⛽ Fuel Used</span>
+    <span id="eta-fuel-used" class="eta-value quantum-color">—</span>
+  </div>
+  <div class="eta-row">
+    <span>💰 Fuel Cost</span>
+    <span id="eta-fuel" class="eta-value quantum-color">—</span>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+/* ================= CONFIG ================= */
+const API_BASE = "http://127.0.0.1:8000";
+
+/* ================= URL PARAMS ================= */
+const params = new URLSearchParams(window.location.search);
+const vehicle = params.get("vehicle") || "car";
+const cc = params.get("cc") || "1500";
+const destName = params.get("dest");
+
+/* ================= MAP ================= */
+const map = L.map("map").setView([20, 78], 5);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "© OpenStreetMap"
+}).addTo(map);
+
+/* ================= STATE ================= */
+let startPoint = null;
+let startMarker = null;
+let destMarker = null;
+let routeLayer = null;
+let tollMarkers = [];
+
+/* ================= HELPERS ================= */
+function clearRoute() {
+  if (routeLayer) map.removeLayer(routeLayer);
+  tollMarkers.forEach(m => map.removeLayer(m));
+  tollMarkers = [];
+}
+
+function updateETA(distance, eta, tolls, fuelCost, fuelUsed) {
+  document.getElementById("eta-distance").textContent = `${distance} km`;
+  document.getElementById("eta-time").textContent = eta;
+  document.getElementById("eta-tolls").textContent = `${tolls} tolls`;
+  document.getElementById("eta-fuel").textContent = `₹ ${fuelCost}`;
+  document.getElementById("eta-fuel-used").textContent = `${fuelUsed} L`;
+}
+
+/* ================= ROUTE ================= */
+async function computeRoute(start, end) {
+  clearRoute();
+
+  const res = await fetch(`${API_BASE}/routes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      start,
+      end,
+      vehicle,
+      cc
+    })
+  });
+
+  const data = await res.json();
+  if (!data.quantum) return;
+
+  /* ROUTE LINE */
+  routeLayer = L.polyline(data.quantum.polyline, {
+    color: "#7c3aed",
+    weight: 8
+  }).addTo(map);
+
+  map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+
+  /* START POPUP */
+  startMarker
+    .bindPopup(`🚚 <b>Start</b><br><small>${data.start.address}</small>`)
+    .openPopup();
+
+  /* DEST POPUP */
+  destMarker
+    .bindPopup(`🎯 <b>Destination</b><br><small>${data.end.address}</small>`);
+
+  /* TOLL ICON */
+  const tollIcon = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    shadowSize: [41, 41]
+  });
+
+  data.toll_points.forEach(toll => {
+    const m = L.marker([toll.lat, toll.lng], { icon: tollIcon })
+      .addTo(map)
+      .bindPopup(`🛣 <b>Toll Plaza</b><br><small>${toll.address}</small>`);
+    tollMarkers.push(m);
+  });
+
+  updateETA(
+    data.quantum.distance_km,
+    data.quantum.eta,
+    data.toll_count,
+    data.quantum.fuel_cost,
+    data.quantum.fuel_used_liters
+  );
+}
+
+/* ================= DESTINATION BY NAME ================= */
+async function setDestinationByName(name) {
+  const res = await fetch(`${API_BASE}/geocode?query=${encodeURIComponent(name)}`);
+  const d = await res.json();
+  if (!d.lat) return;
+
+  const end = { lat: d.lat, lng: d.lng };
+
+  if (destMarker) map.removeLayer(destMarker);
+
+  destMarker = L.marker(end)
+    .addTo(map)
+    .bindPopup(`🎯 <b>Destination</b><br><small>${d.address}</small>`);
+
+  computeRoute(startPoint, end);
+}
+
+/* ================= INIT ================= */
+navigator.geolocation.getCurrentPosition(async pos => {
+  startPoint = {
+    lat: pos.coords.latitude,
+    lng: pos.coords.longitude
+  };
+
+  startMarker = L.marker(startPoint)
+    .addTo(map)
+    .bindPopup("🚚 <b>Start</b>");
+
+  map.setView(startPoint, 10);
+
+  if (destName) {
+    setDestinationByName(destName);
+  } else {
+    document.getElementById("eta-distance").textContent = "Select";
+    document.getElementById("eta-time").textContent = "destination";
+    document.getElementById("eta-tolls").textContent = "on map";
+
+    map.on("click", e => {
+      if (destMarker) map.removeLayer(destMarker);
+
+      const end = {
+        lat: e.latlng.lat,
+        lng: e.latlng.lng
+      };
+
+      destMarker = L.marker(end)
+        .addTo(map)
+        .bindPopup("🎯 <b>Destination</b>")
+        .openPopup();
+
+      computeRoute(startPoint, end);
+    });
+  }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,141 @@
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #0a183d;
+    color: #ffffff;
+    line-height: 1.6;
+}
+
+.hero-section {
+    position: relative; 
+    min-height: 100vh;
+    padding: 2rem 0;
+    overflow: hidden; 
+    display: flex;
+    flex-direction: column;
+}
+
+.background-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; 
+    transform: translate(-50%, -50%);
+    z-index: -2; 
+}
+
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(10, 24, 61, 0.2); 
+    z-index: -1; 
+}
+
+.container {
+    width: 100%;      
+    padding: 0 5%;  
+    position: relative; 
+}
+
+
+.main-nav {
+    display: flex;
+    align-items: center;
+    padding-bottom: 8rem;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    font-family: 'Montserrat', sans-serif; 
+    color: #ffffff;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.logo img {
+    height: 100px;
+    margin-right: 0.75rem;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+.main-nav ul {
+    list-style: none;
+    display: flex;
+    gap: 2.5rem;
+    margin-left: auto;
+}
+
+.main-nav ul li a {
+    text-decoration: none;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 400;
+    padding-bottom: 0.5rem;
+    transition: color 0.3s ease;
+}
+
+.main-nav ul li a:hover {
+    color: #00a9ff;
+}
+
+.main-nav ul li a.active {
+    color: #00a9ff;
+    border-bottom: 2px solid #00a9ff;
+}
+
+
+.hero-content {
+    text-align: left;
+}
+
+.hero-content h1 {
+    font-size: 4rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    font-family: 'Montserrat', sans-serif; 
+}
+
+.hero-content p {
+    font-size: 1.25rem;
+    color: #00a9ff;
+    margin-bottom: 2.5rem;
+}
+
+
+.cta-button {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(90deg, #00a9ff, #007bff);
+    border: none;
+    border-radius: 8px;
+    padding: 1rem 2.5rem;
+    cursor: pointer;
+    text-decoration: none;   
+    display: inline-block;   
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.4s ease;
+}
+
+.cta-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 169, 255, 0.4);
+    background: linear-gradient(90deg, #0090e0, #005fcc); 
+    text-decoration: none;   
+}
